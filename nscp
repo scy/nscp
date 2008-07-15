@@ -127,8 +127,13 @@ else
 	for I in $(seq 1 "$LOCKRETRY"); do
 		dbg "   try $I"
 		if [[ -e "$LOCK" ]]; then
-			dbg "      failed, sleeping $LOCKWAIT"
-			sleep "$LOCKWAIT"
+			if haspid "$(cat "$LOCK")"; then
+				dbg "      failed, sleeping $LOCKWAIT"
+				sleep "$LOCKWAIT"
+			else
+				dbg "      lock is stale, removing"
+				rm -f "$LOCK"
+			fi
 		else
 			echo "$$" > "$LOCK" || die 'cannot write to lock'
 			dbg "      success"
