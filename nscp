@@ -88,7 +88,7 @@ if [[ -z "$CMD" ]]; then
 		sleep 1
 		# Check if it's really me who is responsible.
 		[[ "$(cat "$PIDF")" != "$$" ]] && die 'connection race condition' 3
-		dbg 'spawning background SSH job'
+		dbg "spawning background SSH job to $USER@$HOST running $NSCPS"
 		{
 			ssh -T "$USER@$HOST" "$NSCPS" < "$CMDS" > "$RESS" 2>/dev/null &
 			SSHPID="$!"
