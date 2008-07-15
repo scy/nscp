@@ -5,6 +5,7 @@ CMDPREFIX="$HOME/nagios-plugins"
 [[ -f "$HOME/.nscps" ]] && source "$HOME/.nscps"
 
 dbg() {
+	[[ -z "$NSCPDEBUG" ]] && return
 	echo "$(date '+%D %T') $$ [S] $@" >> /tmp/nscp.log
 }
 

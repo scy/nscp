@@ -5,6 +5,7 @@ CMD="$2"
 shift; shift
 
 dbg() {
+	[[ -z "$NSCPDEBUG" ]] && return
 	echo "$(date '+%D %T') $$ $@" >> /tmp/nscp.log
 }
 
