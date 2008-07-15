@@ -58,7 +58,7 @@ LOCKRETRY=5
 LOCKWAIT=3
 REPLYWAIT=30
 USER='root'
-NSCPS='./nscps'
+NSCPS='./nscp/nscps'
 [[ -f 'nscp.cfg' ]] && source 'nscp.cfg'
 [[ -f "nscp.$HOST.cfg" ]] && source "nscp.$HOST.cfg"
 
