@@ -53,7 +53,7 @@ REPLYWAIT=30
 USER='root'
 NSCPS='./nscp/nscps'
 DOTDIR="$HOME/.nscp"
-WORKDIR="$DOTDIR/pipes"
+WORKDIR="$DOTDIR/work"
 [[ -d "$DOTDIR" ]] || mkdir -p "$DOTDIR" || die "could not create private directory $DOTDIR"
 cd "$DOTDIR" || die "could not change to private directory $DOTDIR"
 
