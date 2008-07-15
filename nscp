@@ -23,13 +23,6 @@ die() {
 [[ -z "$(echo "$HOST" | tr -cd ' ')" ]] || die 'host cannot contain a space character'
 [[ -z "$(echo "$CMD"  | tr -cd ' ')" ]] || die 'command cannot contain a space character'
 
-IN="nscp.$HOST.pipe.in"
-OUT="nscp.$HOST.pipe.out"
-CMDS="nscp.$HOST.pipe.cmds"
-RESS="nscp.$HOST.pipe.ress"
-PIDF="nscp.$HOST.pid"
-LOCK="nscp.$HOST.lock"
-
 haspid() {
 	[[ -n "$(ps -e | grep -E "^ *$1 ")" ]]
 }
@@ -59,8 +52,23 @@ LOCKWAIT=3
 REPLYWAIT=30
 USER='root'
 NSCPS='./nscp/nscps'
-[[ -f 'nscp.cfg' ]] && source 'nscp.cfg'
-[[ -f "nscp.$HOST.cfg" ]] && source "nscp.$HOST.cfg"
+DOTDIR="$HOME/.nscp"
+WORKDIR="$DOTDIR/pipes"
+[[ -d "$DOTDIR" ]] || mkdir -p "$DOTDIR" || die "could not create private directory $DOTDIR"
+cd "$DOTDIR" || die "could not change to private directory $DOTDIR"
+
+[[ -f 'cfg' ]] && source 'cfg'
+[[ -f "$HOST.cfg" ]] && source "$HOST.cfg"
+
+[[ -d "$WORKDIR" ]] || mkdir -p "$WORKDIR" || die "could not create work directory $WORKDIR"
+
+IN="$WORKDIR/$HOST.in"
+OUT="$WORKDIR/$HOST.out"
+CMDS="$WORKDIR/$HOST.cmds"
+RESS="$WORKDIR/$HOST.ress"
+
+PIDF="$WORKDIR/$HOST.pid"
+LOCK="$WORKDIR/$HOST.lock"
 
 if [[ -z "$CMD" ]]; then
 	dbg "request for new connection to $HOST"
