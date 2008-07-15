@@ -12,7 +12,7 @@ handle_line() {
 	PID="$1"
 	CMD="$2"
 	shift; shift
-	if [[ -n "$(echo "$CMD" | tr -cd "$CMDWHITE")" ]]; then
+	if [[ -n "$(echo "$CMD" | tr -d "$CMDWHITE")" ]]; then
 		RC=3
 		RES='NSCPS ERROR - bad characters in command'
 	else
