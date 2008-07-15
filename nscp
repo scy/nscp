@@ -150,7 +150,7 @@ else
 	CMDLINE="$$ $CMD$PARAMS"
 	dbg "sending command line into pipe: $CMDLINE"
 	echo "$CMDLINE" > "$IN"
-	dbg "reading reply"
+	dbg "reading reply (max $REPLYWAIT seconds)"
 	REPLY=''
 	read -t "$REPLYWAIT" REPLY < "$OUT"
 	if [[ "$?" -eq 0 ]]; then
