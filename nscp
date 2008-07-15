@@ -138,8 +138,10 @@ else
 	# If necessary, spawn a connection to this host.
 	if ! alive; then
 		dbg "spawning new connection (calling '$0' '$HOST')"
+		cd - >/dev/null
 		# TODO: Is there any way to see whether this worked?
 		"$0" "$HOST" 2>&1
+		cd - >/dev/null
 	fi
 	PARAMS=''
 	for P in "$@"; do
