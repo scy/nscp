@@ -1,0 +1,93 @@
+#!/bin/sh
+
+TMPDIR="$HOME/.nscp-plugin-tmp"
+TARGETDIR="$HOME/nagios-plugins"
+
+if [[ -z "$1" ]]; then
+	echo 'Please supply a download URL, for example:'
+	echo "  $0 http://garr.dl.sourceforge.net/sourceforge/nagiosplug/nagios-plugins-1.4.12.tar.gz"
+	exit 1
+fi
+
+if ! mkdir "$TMPDIR"; then
+	echo "Working directory $TMPDIR could not be created or already exists."
+	echo "I'm careful with your files, so please check manually why."
+	echo "You can change this directory by editing this script file."
+	exit 1
+fi
+
+if ! cd "$TMPDIR"; then
+	echo "Could not change to working directory $TMPDIR."
+	exit 1
+fi
+
+if ! wget -O plugins.tgz "$1"; then
+	echo "Could not fetch the plugins."
+	exit 1
+fi
+
+if ! tar zxvf plugins.tgz; then
+	echo "Could not extract the plugins."
+	exit 1
+fi
+
+if ! rm plugins.tgz; then
+	echo "Could not remove the tarball."
+	exit 1
+fi
+
+DIR="$(find -maxdepth 1 -type d -not -name '.*')"
+if [[ "$(echo "$DIR" | wc -l)" -ne 1 ]]; then
+	echo "There seems to be more than one subdirectory. I'm confused."
+	exit 1
+fi
+
+if ! cd "$DIR"; then
+	echo "Could not change to extracted directory $DIR."
+	exit 1
+fi
+
+if ! ./configure "--prefix=$TMPDIR/prefix"; then
+	echo "Could not configure the plugins."
+	exit 1
+fi
+
+if ! make; then
+	echo "Could not compile the plugins."
+	exit 1
+fi
+
+if ! make install; then
+	echo "Could not install the plugins."
+	exit 1
+fi
+
+PLUGINS="$TMPDIR/prefix/libexec"
+
+if ! [[ -d "$PLUGINS" ]]; then
+	echo "The plugins should be in $PLUGINS, but they are not."
+	exit 1
+fi
+
+if [[ -e "$TARGETDIR" ]]; then
+	echo "Target directory $TARGETDIR already exists, not messing with it."
+	echo "The plugins are ready however, find them in $PLUGINS."
+	exit 1
+fi
+
+if ! mv "$PLUGINS" "$TARGETDIR"; then
+	echo "Could not move the plugins"
+	echo "from $PLUGINS"
+	echo "to   $TARGETDIR"
+	exit 1
+fi
+
+echo "Cleaning up..."
+if ! rm -rf "$TMPDIR"; then
+	echo "Could not delete directory $TMPDIR"
+	echo "Your plugins should be installed nevertheless in"
+	echo "$TARGETDIR"
+fi
+
+echo "Done, find your plugins in $TARGETDIR"
+exit 0
