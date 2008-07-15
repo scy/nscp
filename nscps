@@ -16,7 +16,7 @@ handle_line() {
 		RC=3
 		RES='NSCPS ERROR - bad characters in command'
 	else
-		RES="$("$CMDPREFIX$CMD" $* 2>&1)"
+		RES="$(eval "$CMDPREFIX$CMD" "$@" 2>&1)"
 		RC="$?"
 		RES="$(echo "$RES" | head -n 1)"
 	fi
