@@ -1,0 +1,161 @@
+#!/bin/sh
+
+HOST="$1"
+CMD="$2"
+shift; shift
+
+dbg() {
+	echo "$(date '+%D %T') $$ $@" >> /tmp/nscp.log
+}
+
+die() {
+	# By default, "die" results in a critical error.
+	RC=2
+	if [[ -n "$2" ]]; then
+		RC="$2"
+	fi
+	dbg "dying: $1"
+	echo "NSCP ERROR - $1"
+	exit "$RC"
+}
+
+[[ -z "$HOST" ]] && die 'you did not specify a host'
+[[ -z "$(echo "$HOST" | tr -cd ' ')" ]] || die 'host cannot contain a space character'
+[[ -z "$(echo "$CMD"  | tr -cd ' ')" ]] || die 'command cannot contain a space character'
+
+IN="nscp.$HOST.pipe.in"
+OUT="nscp.$HOST.pipe.out"
+CMDS="nscp.$HOST.pipe.cmds"
+RESS="nscp.$HOST.pipe.ress"
+PIDF="nscp.$HOST.pid"
+LOCK="nscp.$HOST.lock"
+
+haspid() {
+	[[ -n "$(ps -e | grep -E "^ *$1 ")" ]]
+}
+
+alive() {
+	if [[ -f "$PIDF" ]]; then
+		if haspid "$(cat "$PIDF")"; then
+			return 0
+		else
+			return 1
+		fi
+	else
+		return 1
+	fi
+}
+
+handle_reply() {
+	[[ "$1" != "$$" ]] && die "pipe sync error (got $1)" 3
+	RC="$2"
+	shift; shift
+	echo "$@"
+	return "$RC"
+}
+
+LOCKRETRY=5
+LOCKWAIT=3
+REPLYWAIT=30
+USER='root'
+NSCPS='./nscps'
+[[ -f 'nscp.cfg' ]] && source 'nscp.cfg'
+[[ -f "nscp.$HOST.cfg" ]] && source "nscp.$HOST.cfg"
+
+if [[ -z "$CMD" ]]; then
+	dbg "request for new connection to $HOST"
+	# Is there already a process caring about this host?
+	if alive; then
+		die "host $HOST is already been taken care of"
+	else
+		# Okay, my task.
+		dbg "writing my PID to $PIDF"
+		echo "$$" > "$PIDF"
+		# FIXME: The next "die" calls will produce a stale pidfile.
+		for FIFO in $IN $OUT $CMDS $RESS; do
+			if ! ( [[ -p "$FIFO" ]] || mkfifo "$FIFO" ); then
+				die "could not create fifo $FIFO"
+			fi
+		done
+		sleep 1
+		# Check if it's really me who is responsible.
+		[[ "$(cat "$PIDF")" != "$$" ]] && die 'connection race condition' 3
+		dbg 'spawning background SSH job'
+		{
+			ssh -T "$USER@$HOST" "$NSCPS" < "$CMDS" > "$RESS" 2>/dev/null &
+			SSHPID="$!"
+			while true; do
+				if ! haspid "$SSHPID"; then
+					break
+				fi
+				INCMD=''
+				read -t 2 INCMD < "$IN"
+				if [[ "$INCMD" == '!NSCPQUIT' ]]; then
+					kill $SSHPID
+					sleep 5
+					break
+				elif [[ -n "$INCMD" ]]; then
+					echo "$INCMD"
+				fi
+				if read -t 2 RESULT; then
+					echo "$RESULT" > "$OUT"
+				fi
+			done > "$CMDS" < "$RESS"
+			# Clean up.
+			rm "$PIDF"
+			for FIFO in $IN $OUT $CMDS $RESS; do
+				[[ -p "$FIFO" ]] && rm -f "$FIFO"
+			done
+		} &
+		# Change the PID.
+		dbg "changing PID to $!"
+		echo "$!" > "$PIDF"
+	fi
+	RC=0
+else
+	# Get a lock.
+	dbg 'getting a client lock'
+	for I in $(seq 1 "$LOCKRETRY"); do
+		dbg "   try $I"
+		if [[ -e "$LOCK" ]]; then
+			dbg "      failed, sleeping $LOCKWAIT"
+			sleep "$LOCKWAIT"
+		else
+			echo "$$" > "$LOCK" || die 'cannot write to lock'
+			dbg "      success"
+			break
+		fi
+	done
+	[[ "$(cat "$LOCK" 2>/dev/null)" != "$$" ]] && die 'could not obtain a lock' 3
+	# If necessary, spawn a connection to this host.
+	if ! alive; then
+		dbg "spawning new connection (calling '$0' '$HOST')"
+		# TODO: Is there any way to see whether this worked?
+		"$0" "$HOST" 2>&1
+	fi
+	PARAMS=''
+	for P in "$@"; do
+		PARAMS="$PARAMS \"$(echo "$P" | sed -e 's/"/\\"/g')\""
+	done
+	CMDLINE="$$ $CMD$PARAMS"
+	dbg "sending command line into pipe: $CMDLINE"
+	echo "$CMDLINE" > "$IN"
+	dbg "reading reply"
+	REPLY=''
+	read -t "$REPLYWAIT" REPLY < "$OUT"
+	if [[ "$?" -eq 0 ]]; then
+		dbg "reply is $REPLY"
+		handle_reply $REPLY
+		RC="$?"
+	else
+		TEXT="NSCP ERROR - reply reading timed out after $REPLYWAIT seconds"
+		dbg "$TEXT"
+		echo "$TEXT"
+		RC=3
+	fi
+	# Clean up.
+	rm "$LOCK"
+fi
+
+dbg "quitting with $RC"
+exit "$RC"

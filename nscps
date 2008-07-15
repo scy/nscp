@@ -1,0 +1,31 @@
+#!/bin/sh
+
+CMDWHITE='a-zA-Z0-9_.-'
+CMDPREFIX="$HOME/nagios-plugins"
+[[ -f "$HOME/.nscps" ]] && source "$HOME/.nscps"
+
+dbg() {
+	echo "$(date '+%D %T') $$ [S] $@" >> /tmp/nscp.log
+}
+
+handle_line() {
+	PID="$1"
+	CMD="$2"
+	shift; shift
+	if [[ -n "$(echo "$CMD" | tr -cd "$CMDWHITE")" ]]; then
+		RC=3
+		RES='NSCPS ERROR - bad characters in command'
+	else
+		RES="$("$CMDPREFIX$CMD" $* 2>&1)"
+		RC="$?"
+		RES="$(echo "$RES" | head -n 1)"
+	fi
+	RET="$PID $RC $RES"
+	dbg "returning: $RET"
+	echo "$RET"
+}
+
+while read LINE; do
+	dbg "read line: $LINE"
+	handle_line $LINE
+done
