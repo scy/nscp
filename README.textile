@@ -1,0 +1,10 @@
+h2. nscp -- Nagios SSH Command Pipe
+
+The purpose of this project is to allow a Nagios server to run active checks on a remote system, without requiring
+# unencrypted data transfer or
+# dozens to hundreds of SSH connections each hour.
+
+It does that by running a small bash script on the machine to be monitored, which communicates with the server solely by using named pipes (or FIFOs).
+
+Unfortunately, it doesn't work really well yet, sometimes the connection just hangs.
+I don't have the time to care about this project any more, but wanted to share the code to anybody who's interested in developing the idea further.
